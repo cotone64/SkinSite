@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Add : CSM Skin</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input[type="text"], textarea { width: 100%; margin: 5px 0; }
+    .readonly-prefix { pointer-events: none; user-select: none; color: gray; }
+    .input-wrapper { display: flex; align-items: center; margin-bottom: 5px; gap: 5px; }
+    .input-wrapper span { white-space: nowrap; }
+    textarea { height: 60px; margin-bottom: 10px; }
+    button { margin-left: 5px; }
+  </style>
+</head>
+<body>
+  <h2>CSM付きUVスキンにCSMを追加</h2>
+
+  <input type="file" id="fileInput" accept=".png"><br><br>
+
+  <div class="input-wrapper"><span class="readonly-prefix">スキンの名前</span><input type="text" id="textbox1" value=""><span class="readonly-prefix">'</span></div>
+  <div class="input-wrapper"><span class="readonly-prefix">スキンのID</span><input type="text" id="textbox6" value=""><span class="readonly-prefix"></span></div>
+
+  <div class="input-wrapper">
+    <span class="readonly-prefix"></span>
+    <textarea id="textbox3"></textarea>
+    <span class="readonly-prefix"></span>
+    <button onclick="pasteClipboard('textbox3')">ペースト</button>
+  </div>
+
+  <div class="input-wrapper"><span class="readonly-prefix">OFFSET</span></div>
+  <div class="input-wrapper"><span class="readonly-prefix">ANIM
+    GAME_FLAGS
+    FREE</span></div>
+
+  <br>
+  <button onclick="generateZip()">完了</button>
+
+  <script>
+    let imageFile;
+    const fileInput = document.getElementById("fileInput");
+    const textbox1 = document.getElementById("textbox1");
+    const textbox6 = document.getElementById("textbox6");
+    const textbox3 = document.getElementById("textbox3");
+
+    fileInput.addEventListener("change", (e) => {
+      imageFile = e.target.files[0];
+      if (imageFile && imageFile.name.endsWith(".png")) {
+        const randomId = Math.floor(Math.random() * 1e8).toString().padStart(8, '0');
+        textbox6.value = randomId;
+      } else {
+        alert("スキンを選択してください。");
+        fileInput.value = "";
+      }
+    });
+
+    async function pasteClipboard(id) {
+      try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById(id).value = text;
+      } catch (err) {
+        alert("読み取りに失敗しました。\n" + err);
+      }
+    }
+
+    function generateZip() {
+      if (!imageFile) {
+        alert("スキンを選択してください。");
+        return;
+      }
+
+      const zip = new JSZip();
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const imgData = e.target.result;
+        const skinId = textbox6.value;
+
+        const line1 = `DISPLAYNAME:${textbox1.value}`;
+        const line2 = `DISPLAYNAMEID:IDS_dlcskin${skinId}_DISPLAYNAME`;
+        const line3 = `${textbox3.value}`;
+        const line4 = `OFFSET:HEAD Y 0
+OFFSET:BODY Y 0
+OFFSET:ARM0 Y 0
+OFFSET:ARM1 Y 0
+OFFSET:LEG0 Y 0
+OFFSET:LEG1 Y 0
+OFFSET:HELMET Y 0
+OFFSET:TOOL0 Y 0
+OFFSET:TOOL1 Y 0
+OFFSET:PANTS0 Y 0
+OFFSET:PANTS1 Y 0
+OFFSET:BOOTS0 Y 0
+OFFSET:BOOTS1 Y 0`;
+        const line5 = `ANIM:0x7ff5fc10
+GAME_FLAGS:0x18
+FREE:1`;
+
+        const textContent = `${line1}\n${line2}\n${line3}\n${line4}\n${line5}`;
+        const imageFileName = `dlcskin${skinId}`;
+        const txtFileName = `dlcskin${skinId}.png`;
+
+        zip.file(`${imageFileName}.png`, imgData.split(",")[1], { base64: true });
+        zip.file(`${txtFileName}.txt`, textContent);
+
+        zip.generateAsync({ type: "blob" }).then(function(content) {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(content);
+          link.download = `dlcskin${skinId}.zip`;
+          link.click();
+        });
+      };
+      reader.readAsDataURL(imageFile);
+    }
+  </script>
+</body>
+</html>
